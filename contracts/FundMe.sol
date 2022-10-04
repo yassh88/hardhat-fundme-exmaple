@@ -8,46 +8,46 @@ contract FundMe {
   using PriceConvert for uint256;
   uint256 public constant MINIMUM_USD = 50 * 10**18;
 
-  address public immutable owner_adrs;
+  address private immutable s_owner_i;
 
-  AggregatorV3Interface public immutable priceFeed;
+  AggregatorV3Interface private immutable s_priceFeed;
 
-  address[] private funder;
-  mapping(address => uint256) private funderMap;
+  address[] private s_funder;
+  mapping(address => uint256) private s_funderMap;
 
   modifier onlyOwner() {
-    require(owner_adrs == msg.sender, "only owner can withdraw");
+    require(s_owner_i == msg.sender, "only owner can withdraw");
     _;
   }
 
   constructor(address _priceFeed) {
-    owner_adrs = msg.sender;
-    priceFeed = AggregatorV3Interface(_priceFeed);
+    s_owner_i = msg.sender;
+    s_priceFeed = AggregatorV3Interface(_priceFeed);
   }
 
   function fund() public payable {
     console.log("msg.sender-----", msg.sender);
     require(
-      msg.value.getConversion(priceFeed) >= MINIMUM_USD,
+      msg.value.getConversion(s_priceFeed) >= MINIMUM_USD,
       "Value should be more then 1 Ether"
     );
-    funder.push(msg.sender);
-    funderMap[msg.sender] += msg.value;
+    s_funder.push(msg.sender);
+    s_funderMap[msg.sender] += msg.value;
   }
 
   function getFundByAddress(address fAddress) public view returns (uint256) {
-    return funderMap[fAddress];
+    return s_funderMap[fAddress];
   }
 
   function getFundAddressByIndex(uint256 index) public view returns (address) {
-    return funder[index];
+    return s_funder[index];
   }
 
   function withdraw() public onlyOwner {
-    for (uint256 i = 0; i < funder.length; i++) {
-      funderMap[funder[i]] = 0;
+    for (uint256 i = 0; i < s_funder.length; i++) {
+      s_funderMap[s_funder[i]] = 0;
     }
-    funder = new address[](0);
+    s_funder = new address[](0);
     // payable(msg.sender).transfer(address(this).balance);
     bool result = payable(msg.sender).send(address(this).balance);
     require(result, "send fail");
@@ -55,5 +55,36 @@ contract FundMe {
       ""
     );
     require(resultCal, "send fail");
+  }
+
+  function chepWithdraw() public onlyOwner {
+    address[] memory funders = s_funder;
+    for (uint256 i = 0; i < funders.length; i++) {
+      s_funderMap[funders[i]] = 0;
+    }
+    s_funder = new address[](0);
+    // payable(msg.sender).transfer(address(this).balance);
+    bool result = payable(msg.sender).send(address(this).balance);
+    require(result, "send fail");
+    (bool resultCal, ) = payable(msg.sender).call{value: address(this).balance}(
+      ""
+    );
+    require(resultCal, "send fail");
+  }
+
+  function getVersion() public view returns (uint256) {
+    return s_priceFeed.version();
+  }
+
+  function getFunder(uint256 index) public view returns (address) {
+    return s_funder[index];
+  }
+
+  function getOwner() public view returns (address) {
+    return s_owner_i;
+  }
+
+  function getPriceFeed() public view returns (AggregatorV3Interface) {
+    return s_priceFeed;
   }
 }
